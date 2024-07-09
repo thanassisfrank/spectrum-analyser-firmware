@@ -19,13 +19,11 @@ typedef struct {
     // enum for the current screen
     app_screen_t current_screen;
     // context for the display
-    u8g2_t* u8g2;
+    u8g2_t u8g2;
     // handle for lua environment
     lua_State* L;
     // name of the current script
     char* current_script;
     // index of currently selected element
     int selected_index;
-    // the current state of the device buttons
-    input_state_t input_state;
 } app_state_t;

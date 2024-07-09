@@ -12,7 +12,7 @@
 // for all SPI comms, the SPI2 controller is usd
 // SPI signal wires
 #define APP_MOSI_PIN GPIO_NUM_4
-#define APP_MISO_PIN GPIO_NUM_3
+#define APP_MISO_PIN GPIO_NUM_NC
 #define APP_SCLK_PIN GPIO_NUM_5
 
 // chip selects for SPI
@@ -28,10 +28,10 @@
 #define APP_RSSI_ADC_CHANNEL ADC_CHANNEL_0
 
 // button inputs
-#define APP_UP_BTN_PIN GPIO_NUM_18
-#define APP_RIGHT_BTN_PIN GPIO_NUM_19
-#define APP_DOWN_BTN_PIN GPIO_NUM_1
-#define APP_LEFT_BTN_PIN GPIO_NUM_2
+#define APP_UP_BTN_PIN GPIO_NUM_20
+#define APP_RIGHT_BTN_PIN GPIO_NUM_21
+#define APP_DOWN_BTN_PIN GPIO_NUM_2
+#define APP_LEFT_BTN_PIN GPIO_NUM_3
 #define APP_MIDDLE_BTN_PIN GPIO_NUM_10
 
 

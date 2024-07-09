@@ -6,6 +6,7 @@
 #include "esp_log.h"
 #include "driver/spi_master.h"
 #include "esp_adc/adc_oneshot.h"
+#include "driver/gpio.h"
 
 #include "u8g2.h"
 #include "lua.h"
@@ -19,12 +20,11 @@
 #include "display.h"
 #include "gui.h"
 #include "receiver.h"
+#include "input.h"
 
 static const char* TAG = "main";
 
 static app_state_t app_state;
-
-static u8g2_t app_u8g2;
 
 static ws2812_t status_led;
 
@@ -65,6 +65,29 @@ void setup_adc()
     
 }
 
+// click handler
+void app_click_handler(button_direction_t btn_dir)
+{
+    switch (btn_dir)
+    {
+        case BTN_LEFT:
+            ESP_LOGI(TAG, "left");
+        break;
+        case BTN_UP:
+            ESP_LOGI(TAG, "up");
+        break;
+        case BTN_RIGHT:
+            ESP_LOGI(TAG, "right");
+        break;
+        case BTN_DOWN:
+            ESP_LOGI(TAG, "down");
+        break;
+        case BTN_MIDDLE:
+            ESP_LOGI(TAG, "middle");
+        break;
+    }
+}
+
 // all the operations for startup
 esp_err_t app_load()
 {
@@ -77,7 +100,6 @@ esp_err_t app_load()
     setup_spi_bus(APP_SCLK_PIN, APP_MOSI_PIN, APP_MISO_PIN);
 
     // setup the display
-    app_state.u8g2 = &app_u8g2;
     spi_display_pins_t display_pins = {
         .clk = APP_SCLK_PIN, 
         .mosi = APP_MOSI_PIN, 
@@ -86,12 +108,12 @@ esp_err_t app_load()
         .dc = APP_DISPLAY_DC_PIN,
         .rst = APP_DISPLAY_RST_PIN
     };
-    ESP_ERROR_CHECK(setup_display(app_state.u8g2, APP_DISPLAY_DRIVER, APP_DISPLAY_DEFAULT_ROTATION, display_pins));
+    ESP_ERROR_CHECK(setup_display(&app_state.u8g2, APP_DISPLAY_DRIVER, APP_DISPLAY_DEFAULT_ROTATION, display_pins));
 
-    init_display(app_state.u8g2);
+    init_display(&app_state.u8g2);
 
     // display the splash screen
-    gui_draw_splash(app_state.u8g2);
+    gui_draw_splash(&app_state.u8g2);
 
     // setup the receiver module
     spi_receiver_pins_t rx_pins = {
@@ -102,13 +124,18 @@ esp_err_t app_load()
     setup_receiver(&receiver, rx_pins, adc1_handle, APP_RSSI_ADC_CHANNEL);
 
     // setup the lua environment
-    lua_State* L;
-    L = luaL_newstate();
-
-    app_state.L = L;
+    app_state.L = luaL_newstate();
 
 
     // setup the button event interrupts
+    input_pins_t input_pins = {
+        .left = APP_LEFT_BTN_PIN,
+        .up = APP_UP_BTN_PIN,
+        .right = APP_RIGHT_BTN_PIN,
+        .down = APP_DOWN_BTN_PIN,
+        .middle = APP_MIDDLE_BTN_PIN,
+    };
+    setup_button_input_pins(input_pins, app_click_handler);
 
     return ESP_OK;
 }
