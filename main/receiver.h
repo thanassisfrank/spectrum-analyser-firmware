@@ -6,7 +6,7 @@
 
 #define IF_FREQ_MHZ 479
 
-#define RECV_SPI_CLK_HZ 10000 // 10KHz
+#define RECV_SPI_CLK_HZ 100000 // 10KHz
 
 typedef struct {
     gpio_num_t clk, mosi, cs, rssi;

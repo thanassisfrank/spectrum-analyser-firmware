@@ -32,6 +32,8 @@ static receiver_device_t receiver;
 
 static adc_oneshot_unit_handle_t adc1_handle;
 
+static splash_draw_config_t splash_config;
+
 
 void setup_spi_bus(gpio_num_t sclk_pin, gpio_num_t mosi_pin, gpio_num_t miso_pin)
 {
@@ -113,7 +115,10 @@ esp_err_t app_load()
     init_display(&app_state.u8g2);
 
     // display the splash screen
-    gui_draw_splash(&app_state.u8g2);
+    splash_config.u8g2 = &app_state.u8g2;
+    splash_config.delay_ms = 2000;
+
+    xTaskCreate(gui_draw_splashes_task, "gui_splashes_task", 2048, &splash_config, 10, NULL);
 
     // setup the receiver module
     spi_receiver_pins_t rx_pins = {

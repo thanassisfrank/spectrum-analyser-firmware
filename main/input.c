@@ -38,9 +38,8 @@ static void IRAM_ATTR button_intr_handler(void* arg)
 
 // freertos task to handle button interrupts
 // implements software debouncing for each button
-static void button_intr_task(void* arg)
+static void button_intr_task(input_click_handler_t click_handler)
 {
-    input_click_handler_t click_handler = (input_click_handler_t) arg;
     button_direction_t btn_dir;
     for (;;) {
         if (xQueueReceive(button_evt_queue, &btn_dir, portMAX_DELAY)) {
