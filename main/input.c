@@ -57,7 +57,7 @@ static void button_intr_task()
     for (;;) {
         if (xQueueReceive(button_intr_queue, &btn_dir, portMAX_DELAY)) {
             // TODO: implement debouncing before calling click handler
-            ESP_LOGI(TAG, "btn intr");
+            // ESP_LOGI(TAG, "btn intr");
             xQueueSend(input_evt_queue, &btn_dir, NULL);
         }
     }

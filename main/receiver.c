@@ -34,37 +34,38 @@ static void receiver_command_task()
     rssi_reading_t rssi_reading;
     for (;;) {
         if (xQueueReceive(receiver_command_queue, &command, portMAX_DELAY)) {
-            switch (command.command_type) {
-                case READ_RSSI:
-                    // read rssi using adc and add to the rssi queue
-                    // TODO: add delay to allow settling after freq change
-
-                    // Vout = Dout * Vmax / Dmax
-                    // dmax = 2^bitwidth
-                    adc_oneshot_read(receiver_device.adc_handle, receiver_device.adc_channel, &rssi_reading.rssi);
-                    xQueueSend(rssi_reading_queue, &rssi_reading, NULL);
-                    break;
-                case SET_FREQ:
-                    int freq_lo_mhz = command.data - IF_FREQ_MHZ;
-                    int N = freq_lo_mhz/(2*32); // 84
-                    int A = freq_lo_mhz/2 - 32*N; // 5
-                    uint32_t data = A | (N << 7);
+            // check if the requested freq matches current
+            // switch to correct freq and delay if not
+            if (command.freq != receiver_device.curr_freq) {
+                int freq_lo_mhz = command.freq - IF_FREQ_MHZ;
+                int N = freq_lo_mhz/(2*32); // 84
+                int A = freq_lo_mhz/2 - 32*N; // 5
+                uint32_t data = A | (N << 7);
 
 
-                    spi_transaction_t trans_desc;
-                    trans_desc.addr = 0x01;
-                    trans_desc.cmd = 1; // 1 for write
-                    trans_desc.flags = 0;
-                    trans_desc.length = 20; // number of data bits
-                    trans_desc.rxlength = 0;
-                    trans_desc.tx_buffer = &data;
-                    trans_desc.rx_buffer = NULL;
+                spi_transaction_t trans_desc;
+                trans_desc.addr = 0b1000; // address 1 but bits flipped
+                trans_desc.cmd = 1; // 1 for write
+                trans_desc.flags = 0;
+                trans_desc.length = 20; // number of data bits
+                trans_desc.rxlength = 0;
+                trans_desc.tx_buffer = &data;
+                trans_desc.rx_buffer = NULL;
 
-                    ESP_ERROR_CHECK(spi_device_transmit(receiver_device.spi_handle, &trans_desc));
-                    break;
-                default:
-                    break;
+                ESP_ERROR_CHECK(spi_device_transmit(receiver_device.spi_handle, &trans_desc));
+
+                // delay to allow settling
+                vTaskDelay(pdMS_TO_TICKS(RECV_SETTLE_MS));
+
+                receiver_device.curr_freq = command.freq;
             }
+
+            // read rssi and write to output queue
+            // Vout = Dout * Vmax / Dmax
+            // dmax = 2^bitwidth
+            adc_oneshot_read(receiver_device.adc_handle, receiver_device.adc_channel, &rssi_reading.rssi);
+            rssi_reading.freq = receiver_device.curr_freq;
+            xQueueSend(rssi_reading_queue, &rssi_reading, 0);
         }
     }
 }
@@ -85,7 +86,7 @@ void setup_receiver(spi_receiver_pins_t receiver_pins, adc_oneshot_unit_handle_t
     dev_config.clock_source = SPI_CLK_SRC_DEFAULT;
     dev_config.clock_speed_hz = RECV_SPI_CLK_HZ;
     dev_config.spics_io_num = receiver_pins.cs;
-    dev_config.flags = 0;
+    dev_config.flags = SPI_DEVICE_TXBIT_LSBFIRST;
     dev_config.queue_size = 200;
     dev_config.pre_cb = NULL;
     dev_config.post_cb = NULL;
@@ -96,32 +97,28 @@ void setup_receiver(spi_receiver_pins_t receiver_pins, adc_oneshot_unit_handle_t
     receiver_device.adc_channel = rssi_channel;
 
     // setup the queues
-    receiver_command_queue = xQueueCreate(10, sizeof(receiver_command_t));
-    rssi_reading_queue = xQueueCreate(10, sizeof(rssi_reading_t));
+    receiver_command_queue = xQueueCreate(64, sizeof(receiver_command_t));
+    rssi_reading_queue = xQueueCreate(64, sizeof(rssi_reading_t));
     // start the task to consume button click events
     xTaskCreate(receiver_command_task, "receiver_command_task", 2048, NULL, 10, &receiver_command_task_handle);
 
 }
 
-// set the frequency of the receiver in MHz
-// enqueues
-void request_receiver_freq_mhz(int freq_mhz)
+// enqueues a read at the given frequency for the receiver
+void request_receiver_rssi(int freq_mhz)
 {
 
     receiver_command_t command = {
-        .command_type = SET_FREQ,
-        .data = freq_mhz,
+        .freq = freq_mhz,
     };
 
-    xQueueSend(receiver_command_queue, &command, NULL);
+    xQueueSend(receiver_command_queue, &command, pdMS_TO_TICKS(5));
 }
 
-// reads the current rssi value as an integer
-void request_receiver_rssi()
-{
-    receiver_command_t command = {
-        .command_type = READ_RSSI,
-    };
-
-    xQueueSend(receiver_command_queue, &command, NULL);
+// dispatches a group of rssi requests to the receiver command queue
+void request_receiver_sweep(int start_freq, int step, int count) {
+    for (int i = 0; i < count; i++) {
+        request_receiver_rssi(start_freq + i * step);
+    }
 }
+

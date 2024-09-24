@@ -76,18 +76,16 @@ void app_click_handler(button_direction_t btn_dir, int* freq)
         case BTN_LEFT:
             // gui_print_string(&app_state.u8g2, "left");
             *freq -= 10;
-            // request_receiver_freq_mhz(*freq); 
-            gui_print_string(&app_state.u8g2, "decr freq");
+            // request_receiver_rssi(*freq); 
             ESP_LOGI(TAG, "%i", *freq);
         break;
         case BTN_UP:
-            // request_receiver_rssi();
+            request_receiver_sweep(5650, 5, 64);
             ESP_LOGI(TAG, "up");
         break;
         case BTN_RIGHT:
             *freq += 10;
-            // request_receiver_freq_mhz(*freq); 
-            gui_print_string(&app_state.u8g2, "incr freq");
+            // request_receiver_rssi(*freq); 
             ESP_LOGI(TAG, "%i", *freq);
         break;
         case BTN_DOWN:
@@ -169,13 +167,10 @@ void app_main(void)
 
     // variables for the program
     button_direction_t curr_click_dir;
-    rssi_reading_t curr_rssi_reading;
+    rssi_reading_t rssi_reading;
+    int readings[64];
+
     int curr_freq = 5800;
-
-    // request_receiver_freq_mhz(curr_freq);
-
-    // ESP_LOGI(TAG, "reading: %i", get_receiver_rssi());
-    // vTaskDelay(pdMS_TO_TICKS(1000));
 
     for(;;)
     {
@@ -183,18 +178,25 @@ void app_main(void)
         if (receive_input_event_queue(&curr_click_dir, 16)) {
             // process a new input event
             app_click_handler(curr_click_dir, &curr_freq);
-            ESP_LOGI(TAG, "inpt");
+            // ESP_LOGI(TAG, "inpt");
         }
-        // check if any readings are available from the 
-        if (receive_rssi_queue(&curr_rssi_reading, 16)) {
-            ESP_LOGI(TAG, "recv");
-            // char string[64];
-            // strcat(string, itoa(curr_rssi_reading.freq, str_buf, 10));
+        // check if any readings are available from the receiver
+        if (receive_rssi_queue(&rssi_reading, 16)) {
+            // write the reading into the correct place in readings
+            int index = (rssi_reading.freq - 5650)/5;
+            readings[index] = rssi_reading.rssi;
+
+            // gui_draw_bars(&app_state.u8g2, 0, 0, 2, 64, 100, readings, 64);
+            gui_update_bar(&app_state.u8g2, 0, 0, 2, 64, 100, readings[index], index);
+
+            // ESP_LOGI(TAG, "recv");
+            // char string[64] = "";
+            // strcat(string, itoa(rssi_reading.freq, str_buf, 10));
             // strcat(string, ": ");
-            // strcat(string, itoa(curr_rssi_reading.rssi, str_buf, 10));
+            // strcat(string, itoa(rssi_reading.rssi, str_buf, 10));
 
             // gui_print_string(&app_state.u8g2, string);
-            // ESP_LOGI(TAG, "reading: %i", curr_rssi_reading.rssi);
+            // ESP_LOGI(TAG, "reading: %i %i", rssi_reading.freq, rssi_reading.rssi);
         }
     }
 }
