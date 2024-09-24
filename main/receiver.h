@@ -8,6 +8,8 @@
 
 #define RECV_SPI_CLK_HZ 100000 // 10KHz
 
+#define RECV_SETTLE_MS 10
+
 typedef struct {
     gpio_num_t clk, mosi, cs, rssi;
 } spi_receiver_pins_t;
@@ -18,8 +20,25 @@ typedef struct {
     adc_channel_t adc_channel;
 } receiver_device_t;
 
-void setup_receiver(receiver_device_t*, spi_receiver_pins_t, adc_oneshot_unit_handle_t, adc_channel_t);
+typedef enum {
+    NONE,
+    READ_RSSI,
+    SET_FREQ
+} receiver_command_type_t;
 
-void set_receiver_freq_mhz(receiver_device_t*, int);
+typedef struct {
+    receiver_command_type_t command_type;
+    int data;
+} receiver_command_t;
 
-int get_receiver_rssi(receiver_device_t*);
+typedef struct {
+    int freq, rssi;
+} rssi_reading_t;
+
+BaseType_t receive_rssi_queue(rssi_reading_t*, TickType_t);
+
+void setup_receiver(spi_receiver_pins_t, adc_oneshot_unit_handle_t, adc_channel_t);
+
+void request_receiver_freq_mhz(int);
+
+void request_receiver_rssi();

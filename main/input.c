@@ -8,9 +8,20 @@
 
 static const char* TAG = "input";
 
-// static variables
-static QueueHandle_t button_evt_queue = NULL;
+// task for handling button interrupts
+static QueueHandle_t button_intr_queue = NULL;
 static TaskHandle_t button_intr_task_handle = NULL;
+
+// output queue for input events (clicks)
+static QueueHandle_t input_evt_queue = NULL;
+
+
+// external function to read the queue
+BaseType_t receive_input_event_queue(button_direction_t* btn_dir, TickType_t ticks_to_wait)
+{
+    return xQueueReceive(input_evt_queue, btn_dir, ticks_to_wait);
+}
+
 
 // config a button input pin
 // adds internal pullup resistor and interrupt on edge
@@ -29,32 +40,38 @@ esp_err_t config_button_pin(gpio_num_t pin)
 }
 
 
-// isr to dispatch tasks
+// isr to enqueue interrupt events
 static void IRAM_ATTR button_intr_handler(void* arg)
 {
     button_direction_t btn_dir = (button_direction_t) arg;
-    xQueueSendFromISR(button_evt_queue, &btn_dir, NULL);
+    xQueueSendFromISR(button_intr_queue, &btn_dir, NULL);
 }
 
+
 // freertos task to handle button interrupts
-// implements software debouncing for each button
-static void button_intr_task(input_click_handler_t click_handler)
+// takes button interrupt queue as input and input event queue as output
+// TODO: implements software debouncing for each button
+static void button_intr_task()
 {
     button_direction_t btn_dir;
     for (;;) {
-        if (xQueueReceive(button_evt_queue, &btn_dir, portMAX_DELAY)) {
+        if (xQueueReceive(button_intr_queue, &btn_dir, portMAX_DELAY)) {
             // TODO: implement debouncing before calling click handler
-            click_handler(btn_dir);
+            ESP_LOGI(TAG, "btn intr");
+            xQueueSend(input_evt_queue, &btn_dir, NULL);
         }
     }
 }
 
+
 // sets up the pins for the device button inputs
 // accepts a callback to be run when a click is detected on any button
-void setup_button_input_pins(input_pins_t input_pins, input_click_handler_t click_handler) {
-    button_evt_queue = xQueueCreate(10, sizeof(button_direction_t));
+void setup_button_input_pins(input_pins_t input_pins) {
+    // create the needed queues
+    button_intr_queue = xQueueCreate(8, sizeof(button_direction_t));
+    input_evt_queue = xQueueCreate(8, sizeof(button_direction_t));
     // start the task to consume button click events
-    xTaskCreate(button_intr_task, "click_task", 2048, click_handler, 10, &button_intr_task_handle);
+    xTaskCreate(button_intr_task, "button_intr_task", 2048, NULL, 10, &button_intr_task_handle);
 
     // configure the input gpio pins
     ESP_ERROR_CHECK(config_button_pin(input_pins.left));

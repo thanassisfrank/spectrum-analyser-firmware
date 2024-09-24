@@ -24,26 +24,29 @@ void gui_draw_splashes_task(splash_draw_config_t* info)
     );
     u8g2_SendBuffer(info->u8g2);
 
+    vTaskDelay(pdMS_TO_TICKS(info->delay_ms));
+
     // u8g2 logo
     u8g2_ClearBuffer(info->u8g2);
     u8g2_DrawXBM(info->u8g2, 0, 0, u8g2_logo_128x64_width, u8g2_logo_128x64_height, u8g2_logo_128x64_bits);
-    vTaskDelay(pdMS_TO_TICKS(info->delay_ms));
     u8g2_SendBuffer(info->u8g2);
 
+    vTaskDelay(pdMS_TO_TICKS(info->delay_ms));
     
-
     // clear screen
     u8g2_ClearBuffer(info->u8g2);
-    vTaskDelay(pdMS_TO_TICKS(info->delay_ms));
     u8g2_SendBuffer(info->u8g2);
 
     // delete self
     vTaskDelete(NULL);
 }
 
-void gui_print_string(char* str)
+void gui_print_string(u8g2_t* u8g2, const char* str)
 {
-
+    u8g2_SetFont(u8g2, u8g2_font_ncenB14_tr);
+    u8g2_ClearBuffer(u8g2);
+    u8g2_DrawStr(u8g2, 0, 15, str);
+    u8g2_SendBuffer(u8g2);
 }
 
 void gui_draw_main_menu(u8g2_t* u8g2)

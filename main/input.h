@@ -16,6 +16,6 @@ typedef struct {
     gpio_num_t left, up, right, down, middle;
 } input_pins_t;
 
-typedef void (*input_click_handler_t)(button_direction_t);
+BaseType_t receive_input_event_queue(button_direction_t*, TickType_t);
 
-void setup_button_input_pins(input_pins_t, input_click_handler_t);
+void setup_button_input_pins(input_pins_t);
