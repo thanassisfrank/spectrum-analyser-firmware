@@ -39,3 +39,9 @@
 
 #define APP_DISPLAY_DRIVER DRIVER_SH1106
 #define APP_DISPLAY_DEFAULT_ROTATION U8G2_R2
+
+
+// adc config =================================================================
+
+#define APP_ADC_ATTEN ADC_ATTEN_DB_2_5
+#define APP_ADC_BITWIDTH ADC_BITWIDTH_DEFAULT

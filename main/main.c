@@ -8,6 +8,8 @@
 #include "esp_log.h"
 #include "driver/spi_master.h"
 #include "esp_adc/adc_oneshot.h"
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
 #include "driver/gpio.h"
 
 #include "u8g2.h"
@@ -31,6 +33,7 @@ static app_state_t app_state;
 
 static ws2812_t status_led;
 static adc_oneshot_unit_handle_t adc1_handle;
+static adc_cali_handle_t adc1_cali_handle;
 static splash_draw_config_t splash_config;
 
 
@@ -58,10 +61,32 @@ void setup_adc()
     };
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
 
+
+    #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+        // calibrate the adc unit
+        adc_cali_curve_fitting_config_t cali_config = {
+            .unit_id = ADC_UNIT_1,
+            .atten = APP_ADC_ATTEN,
+            .bitwidth = APP_ADC_BITWIDTH,
+        };
+        ESP_ERROR_CHECK(adc_cali_create_scheme_curve_fitting(&cali_config, &adc1_cali_handle));
+
+    #endif
+
+    #if ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+        // calibrate the adc unit
+        adc_cali_line_fitting_config_t cali_config = {
+            .unit_id = ADC_UNIT_1,
+            .atten = APP_ADC_ATTEN,
+            .bitwidth = APP_ADC_BITWIDTH,
+        };
+        ESP_ERROR_CHECK(adc_cali_create_scheme_line_fitting(&cali_config, &adc1_cali_handle));
+    #endif
+
     // setup the adc on the needed channel (pin)
     adc_oneshot_chan_cfg_t config = {
-        .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_0,
+        .atten = APP_ADC_ATTEN,
+        .bitwidth = APP_ADC_BITWIDTH,
     };
     ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, APP_RSSI_ADC_CHANNEL, &config));
     
@@ -135,7 +160,7 @@ esp_err_t app_load()
         .mosi = APP_MOSI_PIN, 
         .cs = APP_RX_CS_PIN
     };
-    setup_receiver(rx_pins, adc1_handle, APP_RSSI_ADC_CHANNEL);
+    setup_receiver(rx_pins, adc1_handle, APP_RSSI_ADC_CHANNEL, adc1_cali_handle);
 
     // setup the lua environment
     app_state.L = luaL_newstate();
@@ -187,7 +212,7 @@ void app_main(void)
             readings[index] = rssi_reading.rssi;
 
             // gui_draw_bars(&app_state.u8g2, 0, 0, 2, 64, 100, readings, 64);
-            gui_update_bar(&app_state.u8g2, 0, 0, 2, 64, 100, readings[index], index);
+            gui_update_bar(&app_state.u8g2, 0, 0, 2, 64, 20, readings[index], index);
 
             // ESP_LOGI(TAG, "recv");
             // char string[64] = "";

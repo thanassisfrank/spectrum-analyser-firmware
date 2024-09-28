@@ -20,6 +20,11 @@ static TaskHandle_t receiver_command_task_handle = NULL;
 // output rssi reading queue
 static QueueHandle_t rssi_reading_queue = NULL;
 
+// takes the reading from the adc and converts to an rssi value (0->100)
+int adc_reading_to_rssi(int adc_reading) {
+    return 0;
+}
+
 // external access to the rssi reading queue
 BaseType_t receive_rssi_queue(rssi_reading_t* reading, TickType_t ticks_to_wait)
 {
@@ -60,11 +65,19 @@ static void receiver_command_task()
                 receiver_device.curr_freq = command.freq;
             }
 
-            // read rssi and write to output queue
-            // Vout = Dout * Vmax / Dmax
-            // dmax = 2^bitwidth
-            adc_oneshot_read(receiver_device.adc_handle, receiver_device.adc_channel, &rssi_reading.rssi);
+            // read rssi
+            int raw_reading;
+            int voltage_milli;
+            adc_oneshot_read(receiver_device.adc_handle, receiver_device.adc_channel, &raw_reading);
+            adc_cali_raw_to_voltage(receiver_device.adc_cali_handle, raw_reading, &voltage_milli);
+
+            // map rssi reading to 0 -> 1000
+            rssi_reading.rssi = (1000 * (voltage_milli - RECV_0_RSSI_MILLIVOLTS))/(RECV_1000_RSSI_MILLIVOLTS - RECV_0_RSSI_MILLIVOLTS);
+            if (rssi_reading.rssi < 0) rssi_reading.rssi = 0;
+            if (rssi_reading.rssi > 1000) rssi_reading.rssi = 1000;
             rssi_reading.freq = receiver_device.curr_freq;
+
+            // read to output queue
             xQueueSend(rssi_reading_queue, &rssi_reading, 0);
         }
     }
@@ -72,7 +85,7 @@ static void receiver_command_task()
 
 
 // set up the receiver on SPI2_HOST
-void setup_receiver(spi_receiver_pins_t receiver_pins, adc_oneshot_unit_handle_t adc_handle, adc_channel_t rssi_channel)
+void setup_receiver(spi_receiver_pins_t receiver_pins, adc_oneshot_unit_handle_t adc_handle, adc_channel_t rssi_channel, adc_cali_handle_t adc_cali)
 {
     // spi bus initialisation is done before this is called
     spi_device_interface_config_t dev_config;
@@ -95,6 +108,8 @@ void setup_receiver(spi_receiver_pins_t receiver_pins, adc_oneshot_unit_handle_t
 
     receiver_device.adc_handle = adc_handle;
     receiver_device.adc_channel = rssi_channel;
+    receiver_device.adc_cali_handle = adc_cali;
+
 
     // setup the queues
     receiver_command_queue = xQueueCreate(64, sizeof(receiver_command_t));
