@@ -4,6 +4,8 @@
 
 #include "driver/gpio.h"
 
+#define BTN_DEBOUNCE_MS 75
+
 typedef enum {
     BTN_LEFT,
     BTN_UP,
@@ -11,6 +13,22 @@ typedef enum {
     BTN_DOWN,
     BTN_MIDDLE,
 } button_direction_t;
+
+typedef enum {
+    BTN_EVENT_DOWN,
+    BTN_EVENT_UP,
+    BTN_EVENT_HOLD
+} button_event_t;
+
+typedef struct {
+    button_direction_t btn_direction;
+    gpio_num_t pin;
+} button_t;
+
+typedef struct {
+    button_direction_t btn_direction;
+    button_event_t event;
+} input_event_t;
 
 typedef struct {
     gpio_num_t left, up, right, down, middle;

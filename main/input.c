@@ -3,10 +3,13 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
+#include "driver/gpio_filter.h"
 
 #include "input.h"
 
 static const char* TAG = "input";
+
+button_t up_btn, right_btn, down_btn, left_btn, middle_btn;
 
 // task for handling button interrupts
 static QueueHandle_t button_intr_queue = NULL;
@@ -37,15 +40,31 @@ esp_err_t config_button_pin(gpio_num_t pin)
     };
 
     return gpio_config(&pin_config);
+
+    // const gpio_pin_glitch_filter_config_t pin_glitch_filter_config = {
+    //     .clk_src = GLITCH_FILTER_CLK_SRC_DEFAULT,
+    //     .gpio_num = pin
+    // };
+
+    // gpio_glitch_filter_handle_t glitch_filter_handle;
+
+    // gpio_new_pin_glitch_filter(&pin_glitch_filter_config, &glitch_filter_handle);
+
+    // return gpio_glitch_filter_enable(glitch_filter_handle);
+
+    // TODO: store glitch filter handles to allow disabling and deletion later
 }
 
 
 // isr to enqueue interrupt events
 static void IRAM_ATTR button_intr_handler(void* arg)
 {
-    button_direction_t btn_dir = (button_direction_t) arg;
-    xQueueSendFromISR(button_intr_queue, &btn_dir, NULL);
+    button_t* btn = (button_t*) arg;
+    // disable interrupts for this button
+    gpio_intr_disable(btn->pin);
+    xQueueSendFromISR(button_intr_queue, btn, NULL);
 }
+
 
 
 // freertos task to handle button interrupts
@@ -53,12 +72,19 @@ static void IRAM_ATTR button_intr_handler(void* arg)
 // TODO: implements software debouncing for each button
 static void button_intr_task()
 {
-    button_direction_t btn_dir;
+    button_t btn;
     for (;;) {
-        if (xQueueReceive(button_intr_queue, &btn_dir, portMAX_DELAY)) {
-            // TODO: implement debouncing before calling click handler
-            // ESP_LOGI(TAG, "btn intr");
-            xQueueSend(input_evt_queue, &btn_dir, NULL);
+        if (xQueueReceive(button_intr_queue, &btn, portMAX_DELAY)) {
+            // ESP_LOGI(TAG, "button edge");
+            // wait for the debounce period
+            vTaskDelay(pdMS_TO_TICKS(BTN_DEBOUNCE_MS));
+            // read the value of the button
+            if (gpio_get_level(btn.pin) == 0) {
+                // if button is still low, register a real press event
+                xQueueSend(input_evt_queue, &btn.btn_direction, 0);
+            }
+            // enable the interrupt again
+            gpio_intr_enable(btn.pin);
         }
     }
 }
@@ -68,7 +94,7 @@ static void button_intr_task()
 // accepts a callback to be run when a click is detected on any button
 void setup_button_input_pins(input_pins_t input_pins) {
     // create the needed queues
-    button_intr_queue = xQueueCreate(8, sizeof(button_direction_t));
+    button_intr_queue = xQueueCreate(8, sizeof(button_t));
     input_evt_queue = xQueueCreate(8, sizeof(button_direction_t));
     // start the task to consume button click events
     xTaskCreate(button_intr_task, "button_intr_task", 2048, NULL, 10, &button_intr_task_handle);
@@ -82,9 +108,19 @@ void setup_button_input_pins(input_pins_t input_pins) {
 
     ESP_ERROR_CHECK(gpio_install_isr_service(0));
 
-    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.up,     button_intr_handler, (void*) BTN_UP));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.right,  button_intr_handler, (void*) BTN_RIGHT));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.down,   button_intr_handler, (void*) BTN_DOWN));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.left,   button_intr_handler, (void*) BTN_LEFT));
-    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.middle, button_intr_handler, (void*) BTN_MIDDLE));
+    up_btn = (button_t){.btn_direction = BTN_UP, .pin = input_pins.up};
+    right_btn = (button_t){.btn_direction = BTN_RIGHT, .pin = input_pins.right};
+    down_btn = (button_t){.btn_direction = BTN_DOWN, .pin = input_pins.down};
+    left_btn = (button_t){.btn_direction = BTN_LEFT, .pin = input_pins.left};
+    middle_btn = (button_t){.btn_direction = BTN_MIDDLE, .pin = input_pins.middle};
+
+    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.up,     button_intr_handler, (void*) &up_btn));
+
+    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.right,  button_intr_handler, (void*) &right_btn));
+
+    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.down,   button_intr_handler, (void*) &down_btn));
+
+    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.left,   button_intr_handler, (void*) &left_btn));
+
+    ESP_ERROR_CHECK(gpio_isr_handler_add(input_pins.middle, button_intr_handler, (void*) &middle_btn));
 }
