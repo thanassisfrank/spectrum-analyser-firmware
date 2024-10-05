@@ -11,7 +11,7 @@ typedef enum {
     SCREEN_NONE,
     SCREEN_LOADING,
     SCREEN_MAIN_MENU,
-    SCREEN_SCRIPT,
+    SCREEN_SPECTRUM_SWEEP,
     SCREEN_SETTINGS
 } app_screen_t;
 

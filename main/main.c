@@ -31,10 +31,19 @@ char str_buf[32];
 
 static app_state_t app_state;
 
+char* main_menu_lines[5] = {
+    "Spectrum sweep",
+    "Channel monitor",
+    "Drone finder",
+    "Lap timer",
+    "Settings",
+};
+
+// char main_menu_lines[5][32];
+
 static ws2812_t status_led;
 static adc_oneshot_unit_handle_t adc1_handle;
 static adc_cali_handle_t adc1_cali_handle;
-static splash_draw_config_t splash_config;
 
 
 
@@ -93,32 +102,89 @@ void setup_adc()
 }
 
 
-// click handler
-void app_click_handler(button_direction_t btn_dir, int* freq)
+// changes the current screen to the requested one
+void app_switch_screens(app_state_t* app_state, app_screen_t new_screen)
 {
-    switch (btn_dir)
+    // clear the buffer
+    gui_clear_screen(&app_state->u8g2);
+
+    switch (new_screen) 
     {
-        case BTN_LEFT:
-            // gui_print_string(&app_state.u8g2, "left");
-            *freq -= 10;
-            // request_receiver_rssi(*freq); 
-            ESP_LOGI(TAG, "%i", *freq);
-        break;
-        case BTN_UP:
-            request_receiver_sweep(5650, 5, 64);
-            ESP_LOGI(TAG, "up");
-        break;
-        case BTN_RIGHT:
-            *freq += 10;
-            // request_receiver_rssi(*freq); 
-            ESP_LOGI(TAG, "%i", *freq);
-        break;
-        case BTN_DOWN:
-            ESP_LOGI(TAG, "down");
-        break;
-        case BTN_MIDDLE:
-            ESP_LOGI(TAG, "middle");
-        break;
+        case SCREEN_LOADING:
+            // display the splash screen
+            gui_draw_splashes_blocking(&app_state->u8g2, 1000);
+            break;
+        case SCREEN_MAIN_MENU:
+            app_state->selected_index = 0;
+            gui_print_lines_select(&app_state->u8g2, 0, 0, app_state->selected_index, main_menu_lines, 5);
+            break;
+        default:
+            break;
+    }
+
+    app_state->current_screen = new_screen;
+}
+
+
+// click handler
+void app_click_handler(app_state_t* app_state, button_direction_t btn_dir)
+{
+    switch (app_state->current_screen) 
+    {
+        case SCREEN_MAIN_MENU:
+            switch (btn_dir)
+            {
+                case BTN_UP:
+                    // move cursor up
+                    app_state->selected_index = (app_state->selected_index - 1) % 5;
+                    gui_print_lines_select(&app_state->u8g2, 0, 0, app_state->selected_index, main_menu_lines, 5);
+                    break;
+                case BTN_DOWN:
+                    // move cursor down
+                    app_state->selected_index = (app_state->selected_index + 1) % 5;
+                    gui_print_lines_select(&app_state->u8g2, 0, 0, app_state->selected_index, main_menu_lines, 5);
+                    break;
+                case BTN_RIGHT:
+                    // open the right app
+                    if (0 == app_state->selected_index) {
+                        app_switch_screens(app_state, SCREEN_SPECTRUM_SWEEP);
+                    }
+                    break;
+                default:
+                    break;
+            }
+            break;
+        case SCREEN_SPECTRUM_SWEEP:
+            // request spectrum sweep
+            if (BTN_LEFT == btn_dir) {
+                app_switch_screens(app_state, SCREEN_MAIN_MENU);
+            } else {
+                request_receiver_sweep(5650, 5, 64);
+            }
+            break;
+        default:
+            ESP_LOGI(TAG, "btn");
+            break;
+    }
+}
+
+
+// rssi reading handler
+void app_rssi_reading_handler(app_state_t* app_state, rssi_reading_t rssi_reading)
+{
+    switch (app_state->current_screen) 
+    {
+        case SCREEN_SPECTRUM_SWEEP:
+            // write the reading into the correct place in readings
+            int index = (rssi_reading.freq - 5650)/5;
+
+            gui_update_bar(&app_state->u8g2, 0, 0, 2, 64, 20, rssi_reading.rssi, index);
+
+            // ESP_LOGI(TAG, "recv %i", rssi_reading.rssi);
+            break;
+        default:
+            ESP_LOGI(TAG, "rssi");
+            break;
     }
 }
 
@@ -148,12 +214,6 @@ esp_err_t app_load()
 
     init_display(&app_state.u8g2);
 
-    // display the splash screen
-    splash_config.u8g2 = &app_state.u8g2;
-    splash_config.delay_ms = 2000;
-
-    xTaskCreate(gui_draw_splashes_task, "gui_splashes_task", 2048, &splash_config, 10, NULL);
-
     // setup the receiver module
     spi_receiver_pins_t rx_pins = {
         .clk = APP_SCLK_PIN, 
@@ -176,6 +236,13 @@ esp_err_t app_load()
     };
     setup_button_input_pins(input_pins);
 
+
+    // strcpy(main_menu_lines[0], "Spectrum sweep");
+    // strcpy(main_menu_lines[1], "Channel monitor");
+    // strcpy(main_menu_lines[2], "Drone finder");
+    // strcpy(main_menu_lines[3], "Lap timer");
+    // strcpy(main_menu_lines[4], "Settings");
+
     return ESP_OK;
 }
 
@@ -188,40 +255,22 @@ void app_main(void)
     ESP_ERROR_CHECK(app_load());
     set_color_ws2812(&status_led, WS2812_DIM_GREEN);
 
-    
+    app_switch_screens(&app_state, SCREEN_LOADING);
 
     // variables for the program
     button_direction_t curr_click_dir;
     rssi_reading_t rssi_reading;
-    int readings[64];
 
-    int curr_freq = 5800;
-
+    app_switch_screens(&app_state, SCREEN_MAIN_MENU);
     for(;;)
     {
         // check for the status of input button queue
         if (receive_input_event_queue(&curr_click_dir, 16)) {
-            // process a new input event
-            app_click_handler(curr_click_dir, &curr_freq);
-            // ESP_LOGI(TAG, "inpt");
+            app_click_handler(&app_state, curr_click_dir);
         }
         // check if any readings are available from the receiver
         if (receive_rssi_queue(&rssi_reading, 16)) {
-            // write the reading into the correct place in readings
-            int index = (rssi_reading.freq - 5650)/5;
-            readings[index] = rssi_reading.rssi;
-
-            // gui_draw_bars(&app_state.u8g2, 0, 0, 2, 64, 100, readings, 64);
-            gui_update_bar(&app_state.u8g2, 0, 0, 2, 64, 20, readings[index], index);
-
-            // ESP_LOGI(TAG, "recv");
-            // char string[64] = "";
-            // strcat(string, itoa(rssi_reading.freq, str_buf, 10));
-            // strcat(string, ": ");
-            // strcat(string, itoa(rssi_reading.rssi, str_buf, 10));
-
-            // gui_print_string(&app_state.u8g2, string);
-            // ESP_LOGI(TAG, "reading: %i %i", rssi_reading.freq, rssi_reading.rssi);
+            app_rssi_reading_handler(&app_state, rssi_reading);
         }
     }
 }
