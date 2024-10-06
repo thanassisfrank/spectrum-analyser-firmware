@@ -1,6 +1,26 @@
 // bitmaps.h
 // contains a set of bitmaps in the XBM format
 
+#define arrow_up_6x3_width  6
+#define arrow_up_6x3_height 3
+static unsigned char arrow_up_6x3_bits[] = {
+   0xcc,0xde,0xff};
+
+#define arrow_down_6x3_width  6
+#define arrow_down_6x3_height 3
+static unsigned char arrow_down_6x3_bits[] = {
+   0xff,0xde,0xcc};
+
+#define arrow_up_12x6_width  12
+#define arrow_up_12x6_height 6
+static unsigned char arrow_up_12x6_bits[] = {
+ 0x60,0xf0,0xf0,0xf0,0xf8,0xf1,0xfc,0xf3,0xfe,0xf7,0xff,0xff};
+
+#define arrow_down_12x6_width  12
+#define arrow_down_12x6_height 6
+static unsigned char arrow_down_12x6_bits[] = {
+ 0xff,0xff,0xfe,0xf7,0xfc,0xf3,0xf8,0xf1,0xf0,0xf0,0x60,0xf0};
+
 // u8g2 logo
 #define u8g2_logo_128x64_width 128
 #define u8g2_logo_128x64_height 64

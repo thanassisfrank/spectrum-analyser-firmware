@@ -77,17 +77,16 @@ void gui_draw_splashes_blocking(u8g2_t* u8g2, int delay_ms)
 }
 
 
-void gui_print_string(u8g2_t* u8g2, const char* str)
+void gui_draw_string(u8g2_t* u8g2, int x, int y, font_info_t* font, const char* str)
 {
-    u8g2_SetFont(u8g2, u8g2_font_ncenB14_tr);
-    u8g2_DrawStr(u8g2, 0, 15, str);
+    u8g2_SetFont(u8g2, font->chars);
+    u8g2_DrawStr(u8g2, x, y + font->baseline, str);
     u8g2_SendBuffer(u8g2);
 }
 
-void gui_print_lines_select(u8g2_t* u8g2, int x, int y, int select_index, char** lines, int lines_count)
+void gui_draw_select_lines(u8g2_t* u8g2, int x, int y, font_info_t* font, int select_index, const char** lines, int lines_count)
 {
-    const int line_spacing = 12;
-    u8g2_SetFont(u8g2, u8g2_font_spleen6x12_mf);
+    u8g2_SetFont(u8g2, font->chars);
     char this_line[32] = "";
 
     for (int i = 0; i < lines_count; i++) {
@@ -98,12 +97,65 @@ void gui_print_lines_select(u8g2_t* u8g2, int x, int y, int select_index, char**
             strcpy(this_line, " ");
         }
         strcat(this_line, lines[i]);
-        u8g2_DrawStr(u8g2, x, y + (i+1) * line_spacing, (const char*)this_line);
+        int offset = font->baseline + i * font->height;
+        u8g2_DrawStr(u8g2, x, y + offset, (const char*)this_line);
     }
     u8g2_SendBuffer(u8g2);
 }
 
+void gui_draw_string_vertical_arrows(u8g2_t* u8g2, int x, int y, font_info_t* font, const char* str, char_size_t char_size)
+{
+    // draw text
+    u8g2_SetFont(u8g2, font->chars);
+    u8g2_DrawStr(u8g2, x, y + font->baseline, str);
+    
+    size_t char_count = strlen(str);
+    
+    const int arrow_offset = 4;
+    
+    int tri_offset_x = (char_count * font->width - 6)/2;
+    int upper_offset_y, lower_offset_y;
 
+    switch (char_size)
+    {
+        case CHAR_SIZE_CAPITAL:
+            upper_offset_y = font->capline;
+            lower_offset_y = font->baseline;
+            break;
+        case CHAR_SIZE_SMALL:
+            upper_offset_y = font->median;
+            lower_offset_y = font->baseline;
+            break;
+        case CHAR_SIZE_DESCENDER:
+            upper_offset_y = font->median;
+            lower_offset_y = font->height;
+            break;
+        case CHAR_SIZE_FULL:
+        default:
+            upper_offset_y = -1;
+            lower_offset_y = font->height;
+            break;
+
+    }
+    u8g2_DrawXBM(
+        u8g2, 
+        x + tri_offset_x, 
+        y + upper_offset_y - arrow_up_6x3_height + 1 - arrow_offset, 
+        arrow_up_6x3_width, 
+        arrow_up_6x3_height, 
+        arrow_up_6x3_bits
+    );
+    u8g2_DrawXBM(
+        u8g2, 
+        x + tri_offset_x, 
+        y + lower_offset_y + arrow_offset, 
+        arrow_down_6x3_width, 
+        arrow_down_6x3_height, 
+        arrow_down_6x3_bits
+    );
+    
+    u8g2_SendBuffer(u8g2);
+}
 // TODO: support horizontal graph
 // draws a bar graph from the supplied data
 // x, y give position of top left corner
@@ -144,10 +196,3 @@ void gui_update_bar(u8g2_t* u8g2, int x, int y, int col_width, int height, int s
 
     u8g2_SendBuffer(u8g2);
 }
-
-
-void gui_draw_main_menu(u8g2_t* u8g2)
-{
-    
-}
-

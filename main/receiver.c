@@ -10,6 +10,103 @@
 
 #include "receiver.h"
 
+// constatnts ==============================================================
+
+const freq_band_t freq_bands[5] = {
+    FREQ_BAND_A,
+    FREQ_BAND_B,
+    FREQ_BAND_E,
+    FREQ_BAND_F,
+    FREQ_BAND_R
+};
+
+const freq_channel_t freq_channels[8] = {
+    FREQ_CHANNEL_1,
+    FREQ_CHANNEL_2,
+    FREQ_CHANNEL_3,
+    FREQ_CHANNEL_4,
+    FREQ_CHANNEL_5,
+    FREQ_CHANNEL_6,
+    FREQ_CHANNEL_7,
+    FREQ_CHANNEL_8,
+};
+
+
+const int FREQ_MAP[][8] = {
+    [FREQ_BAND_A] = {
+        [FREQ_CHANNEL_1] = 5865,
+        [FREQ_CHANNEL_2] = 5845,
+        [FREQ_CHANNEL_3] = 5825,
+        [FREQ_CHANNEL_4] = 5805,
+        [FREQ_CHANNEL_5] = 5785,
+        [FREQ_CHANNEL_6] = 5765,
+        [FREQ_CHANNEL_7] = 5745,
+        [FREQ_CHANNEL_8] = 5725,
+    },
+    [FREQ_BAND_B] = {
+        [FREQ_CHANNEL_1] = 5733,
+        [FREQ_CHANNEL_2] = 5752,
+        [FREQ_CHANNEL_3] = 5771,
+        [FREQ_CHANNEL_4] = 5790,
+        [FREQ_CHANNEL_5] = 5809,
+        [FREQ_CHANNEL_6] = 5828,
+        [FREQ_CHANNEL_7] = 5847,
+        [FREQ_CHANNEL_8] = 5866,
+    },
+    [FREQ_BAND_E] = {
+        [FREQ_CHANNEL_1] = 5705,
+        [FREQ_CHANNEL_2] = 5685,
+        [FREQ_CHANNEL_3] = 5665,
+        [FREQ_CHANNEL_4] = 5645,
+        [FREQ_CHANNEL_5] = 5885,
+        [FREQ_CHANNEL_6] = 5905,
+        [FREQ_CHANNEL_7] = 5925,
+        [FREQ_CHANNEL_8] = 5945,
+    },
+    [FREQ_BAND_F] = {
+        [FREQ_CHANNEL_1] = 5740,
+        [FREQ_CHANNEL_2] = 5760,
+        [FREQ_CHANNEL_3] = 5780,
+        [FREQ_CHANNEL_4] = 5800,
+        [FREQ_CHANNEL_5] = 5820,
+        [FREQ_CHANNEL_6] = 5840,
+        [FREQ_CHANNEL_7] = 5860,
+        [FREQ_CHANNEL_8] = 5880,
+    },
+    [FREQ_BAND_R] = {
+        [FREQ_CHANNEL_1] = 5658,
+        [FREQ_CHANNEL_2] = 5695,
+        [FREQ_CHANNEL_3] = 5732,
+        [FREQ_CHANNEL_4] = 5769,
+        [FREQ_CHANNEL_5] = 5806,
+        [FREQ_CHANNEL_6] = 5843,
+        [FREQ_CHANNEL_7] = 5880,
+        [FREQ_CHANNEL_8] = 5917,
+    }
+};
+
+const char FREQ_BAND_NAME[][2] = {
+    [FREQ_BAND_A] = "A",
+    [FREQ_BAND_B] = "B",
+    [FREQ_BAND_E] = "E",
+    [FREQ_BAND_F] = "F",
+    [FREQ_BAND_R] = "R"
+};
+
+const char FREQ_CHANNEL_NAME[][2] = {
+    [FREQ_CHANNEL_1] = "1",
+    [FREQ_CHANNEL_2] = "2",
+    [FREQ_CHANNEL_3] = "3",
+    [FREQ_CHANNEL_4] = "4",
+    [FREQ_CHANNEL_5] = "5",
+    [FREQ_CHANNEL_6] = "6",
+    [FREQ_CHANNEL_7] = "7",
+    [FREQ_CHANNEL_8] = "8",
+};
+
+
+
+
 // receiver device
 static receiver_device_t receiver_device;
 
