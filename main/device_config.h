@@ -16,23 +16,23 @@
 #define APP_SCLK_PIN GPIO_NUM_5
 
 // chip selects for SPI
-#define APP_RX_CS_PIN GPIO_NUM_7
-#define APP_DISPLAY_CS_PIN GPIO_NUM_6
+#define APP_RX_CS_PIN GPIO_NUM_6
+#define APP_DISPLAY_CS_PIN GPIO_NUM_7
 #define APP_SD_CS_PIN GPIO_NUM_NC
 
 // display pins
-#define APP_DISPLAY_DC_PIN GPIO_NUM_9
-#define APP_DISPLAY_RST_PIN GPIO_NUM_8
+#define APP_DISPLAY_DC_PIN GPIO_NUM_8
+#define APP_DISPLAY_RST_PIN GPIO_NUM_2
 
 // analog read pin for RSSI
 #define APP_RSSI_ADC_CHANNEL ADC_CHANNEL_0
 
 // button inputs
 #define APP_UP_BTN_PIN GPIO_NUM_20
-#define APP_RIGHT_BTN_PIN GPIO_NUM_21
-#define APP_DOWN_BTN_PIN GPIO_NUM_2
-#define APP_LEFT_BTN_PIN GPIO_NUM_3
-#define APP_MIDDLE_BTN_PIN GPIO_NUM_10
+#define APP_RIGHT_BTN_PIN GPIO_NUM_3
+#define APP_DOWN_BTN_PIN GPIO_NUM_9
+#define APP_LEFT_BTN_PIN GPIO_NUM_21
+#define APP_MIDDLE_BTN_PIN GPIO_NUM_1
 
 
 // display config =============================================================
